@@ -32,6 +32,7 @@ import com.google.android.material.snackbar.Snackbar;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity implements MyRecyclerViewAdapter.ItemClickListener {
 
@@ -117,6 +118,10 @@ public class MainActivity extends AppCompatActivity implements MyRecyclerViewAda
 
         final BluetoothGatt mGatt = device.connectGatt(getApplication(), false, gattCallback);
 
+        final BluetoothGattCharacteristic mCharacterisitc = new BluetoothGattCharacteristic(UUID.fromString("38400000-8cf0-11bd-b23e-10b96e4ef00d") , BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE );
+
+        mCharacterisitc.setValue(123, BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+        mGatt.writeCharacteristic(mCharacterisitc);
 
     }
 
