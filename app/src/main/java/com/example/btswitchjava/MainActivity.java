@@ -1,8 +1,11 @@
 package com.example.btswitchjava;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -16,6 +19,7 @@ import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -26,9 +30,10 @@ import android.widget.Toast;
 
 import com.google.android.material.snackbar.Snackbar;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements MyRecyclerViewAdapter.ItemClickListener {
 
     View view;
 
@@ -46,37 +51,11 @@ public class MainActivity extends AppCompatActivity {
 
     private int permissionCheck;
 
+    private RecyclerView mRecyclerView;
 
-    private ScanCallback mLeScanCallback = new ScanCallback() {
-        @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-            super.onScanResult(callbackType, result);
+    MyRecyclerViewAdapter adapter;
 
-            System.out.println("BLE// onScanResult");
-            Log.i("callbackType", String.valueOf(callbackType));
-            Log.i("result", result.toString());
-            Log.i("Device Name: ", "Name - " + result.getDevice().getName());
-            Log.i("Device Address: ", "Address - " + result.getDevice().getAddress());
-            BluetoothDevice btDevice = result.getDevice();
-
-
-            connectToDevice(btDevice);
-
-            //Log.d("SHD","onScanResult");
-        }
-
-        @Override
-        public void onBatchScanResults(List<ScanResult> results) {
-            super.onBatchScanResults(results);
-            Log.d("SHD","onBatchScanResult");
-
-        }
-
-        @Override
-        public void onScanFailed(int errorCode) {
-            super.onScanFailed(errorCode);
-        }
-    };
+    ArrayList<String> devicesNames = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,6 +64,26 @@ public class MainActivity extends AppCompatActivity {
 
         Log.d("SHD","onCeate");
         mHandler = new Handler();
+
+        //recycler View
+
+        devicesNames.add("Test");
+//        devicesNames.add("Cow");
+//        devicesNames.add("Camel");
+//        devicesNames.add("Sheep");
+//        devicesNames.add("Goat");
+
+        // set up the RecyclerView
+        RecyclerView recyclerView = findViewById(R.id.recyclerView);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new MyRecyclerViewAdapter(this, devicesNames);
+        adapter.setClickListener(this);
+        recyclerView.setAdapter(adapter);
+
+
+
+
+
 
         // Use this check to determine whether BLE is supported on the device. Then
         // you can selectively disable BLE-related features.
@@ -105,15 +104,62 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }
 
-        checkLocationPermission();
 
 
 //        mBluetoothAdapter.startLeScan(mLeScanCallback);
-        scanLeDevice(true);
+      //  scanLeDevice(true);
        // scanLeDevice(false);
+
+        final BluetoothDevice device = mBluetoothAdapter.getRemoteDevice("00:A0:50:28:97:5D");
+
+        devicesNames.add("Name: " + device.getName());
+        adapter.notifyDataSetChanged();
+
+        final BluetoothGatt mGatt = device.connectGatt(getApplication(), false, gattCallback);
 
 
     }
+
+    @Override
+    public void onItemClick(View view, int position) {
+        Toast.makeText(this, "You clicked " + adapter.getItem(position) + " on row number " + position, Toast.LENGTH_SHORT).show();
+    }
+
+    private ScanCallback mLeScanCallback = new ScanCallback() {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result) {
+            super.onScanResult(callbackType, result);
+
+
+
+            System.out.println("BLE// onScanResult");
+            Log.i("callbackType", String.valueOf(callbackType));
+            Log.i("result", result.toString());
+            Log.i("Device Name: ", "Name - " + result.getDevice().getName());
+            Log.i("Device Address: ", "Address - " + result.getDevice().getAddress());
+            BluetoothDevice btDevice = result.getDevice();
+
+
+
+
+          // connectToDevice(btDevice);
+
+            //Log.d("SHD","onScanResult");
+        }
+
+        @Override
+        public void onBatchScanResults(List<ScanResult> results) {
+            super.onBatchScanResults(results);
+            Log.d("SHD","onBatchScanResult");
+
+
+        }
+
+        @Override
+        public void onScanFailed(int errorCode) {
+            super.onScanFailed(errorCode);
+        }
+    };
 
     private void scanLeDevice(final boolean enable) {
 
@@ -190,27 +236,29 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    public void checkLocationPermission() {
-        permissionCheck = ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.ACCESS_COARSE_LOCATION);
-
-        switch (permissionCheck) {
-            case PackageManager.PERMISSION_GRANTED:
-                break;
-
-            case PackageManager.PERMISSION_DENIED:
-
-                if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, android.Manifest.permission.ACCESS_COARSE_LOCATION)) {
-                    //Show an explanation to user *asynchronouselly* -- don't block
-                    //this thread waiting for the user's response! After user sees the explanation, try again to request the permission
-
-                    Snackbar.make(view, "Location access is required to show Bluetooth devices nearby.",
-                            Snackbar.LENGTH_LONG).setAction("Action", null).show();
-
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSION_REQUEST_COARSE_LOCATION: {
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    System.out.println("coarse location permission granted");
                 } else {
-                    //No explanation needed, we can request the permission
-                    ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSION_REQUEST_COARSE_LOCATION);
+                    final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                    builder.setTitle("Functionality limited");
+                    builder.setMessage("Since location access has not been granted, this app will not be able to discover beacons when in the background.");
+                    builder.setPositiveButton(android.R.string.ok, null);
+                    builder.setOnDismissListener(new DialogInterface.OnDismissListener() {
+
+                        @Override
+                        public void onDismiss(DialogInterface dialog) {
+                        }
+
+                    });
+                    builder.show();
                 }
-                break;
+                return;
+            }
         }
     }
 }
