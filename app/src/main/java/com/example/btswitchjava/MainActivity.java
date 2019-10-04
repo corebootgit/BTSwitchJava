@@ -26,6 +26,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
+import android.widget.Switch;
 import android.widget.Toast;
 
 import com.google.android.material.snackbar.Snackbar;
@@ -58,6 +60,11 @@ public class MainActivity extends AppCompatActivity implements MyRecyclerViewAda
 
     ArrayList<String> devicesNames = new ArrayList<>();
 
+    private String ledState = "OFF";
+
+    private Switch mSwitch;
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,6 +72,25 @@ public class MainActivity extends AppCompatActivity implements MyRecyclerViewAda
 
         Log.d("SHD","onCeate");
         mHandler = new Handler();
+
+        mSwitch = findViewById(R.id.ledSwitch);
+
+        mSwitch.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+
+                if(mSwitch.isChecked()) ledState = "ON"; else ledState = "OFF";
+
+                //                if(ledState == "ON") ledState = "OFF";
+//                else if(ledState == "OFF") ledState = "ON";
+
+                final BluetoothDevice device = mBluetoothAdapter.getRemoteDevice("30:AE:A4:CC:3E:16");
+
+                //devicesNames.add("Name: " + device.getName());
+                //adapter.notifyDataSetChanged();
+
+                final BluetoothGatt mGatt = device.connectGatt(getApplication(), false, gattCallback);
+            }
+        });
 
         //recycler View
 
@@ -111,17 +137,18 @@ public class MainActivity extends AppCompatActivity implements MyRecyclerViewAda
       //  scanLeDevice(true);
        // scanLeDevice(false);
 
-        final BluetoothDevice device = mBluetoothAdapter.getRemoteDevice("00:A0:50:28:97:5D");
+//        final BluetoothDevice device = mBluetoothAdapter.getRemoteDevice("30:AE:A4:CC:3E:16");
+//
+//        devicesNames.add("Name: " + device.getName());
+//        adapter.notifyDataSetChanged();
+//
+//        final BluetoothGatt mGatt = device.connectGatt(getApplication(), false, gattCallback);
 
-        devicesNames.add("Name: " + device.getName());
-        adapter.notifyDataSetChanged();
-
-        final BluetoothGatt mGatt = device.connectGatt(getApplication(), false, gattCallback);
-
-        final BluetoothGattCharacteristic mCharacterisitc = new BluetoothGattCharacteristic(UUID.fromString("38400000-8cf0-11bd-b23e-10b96e4ef00d") , BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE );
-
-        mCharacterisitc.setValue(123, BluetoothGattCharacteristic.FORMAT_UINT8, 0);
-        mGatt.writeCharacteristic(mCharacterisitc);
+//        final BluetoothGattCharacteristic mCharacterisitc = new BluetoothGattCharacteristic(UUID.fromString("a40d0c2e-73ba-4d8b-8eef-9a0666992e56") , BluetoothGattCharacteristic.PROPERTY_WRITE, BluetoothGattCharacteristic.PERMISSION_WRITE );
+//
+//       // mCharacterisitc.setValue(123, BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+//        mCharacterisitc.setValue("ON");
+//        mGatt.writeCharacteristic(mCharacterisitc);
 
     }
 
@@ -210,6 +237,7 @@ public class MainActivity extends AppCompatActivity implements MyRecyclerViewAda
                 case BluetoothProfile.STATE_CONNECTED:
                     Log.i("gattCallback", "STATE_CONNECTED");
                     gatt.discoverServices();
+
                     break;
                 case BluetoothProfile.STATE_CONNECTING:
                     Log.i("gattCallback", "STATE_CONNECTING");
@@ -227,8 +255,24 @@ public class MainActivity extends AppCompatActivity implements MyRecyclerViewAda
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             List<BluetoothGattService> services = gatt.getServices();
             Log.i("onServicesDiscovered", services.toString());
-            gatt.readCharacteristic(services.get(1).getCharacteristics().get
-                    (0));
+
+
+            BluetoothGattCharacteristic characteristic;
+
+            characteristic = services.get(2).getCharacteristics().get(0); //(UUID.fromString("a40d0c2e-73ba-4d8b-8eef-9a0666992e56"));
+            characteristic.setValue(ledState);
+            characteristic.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+
+            Log.i("write characteristic: ", characteristic.getStringValue(0));
+
+            gatt.writeCharacteristic(characteristic);
+
+            gatt.disconnect();
+
+//            gatt.readCharacteristic(services.get(2).getCharacteristics().get(0));
+
+
+
         }
 
         @Override
@@ -236,9 +280,10 @@ public class MainActivity extends AppCompatActivity implements MyRecyclerViewAda
         public void onCharacteristicRead(BluetoothGatt gatt,
                                          BluetoothGattCharacteristic
                                                  characteristic, int status) {
-            Log.i("onCharacteristicRead", characteristic.toString());
+            Log.i("onCharacteristicRead", characteristic.getStringValue(0));
             gatt.disconnect();
         }
+
     };
 
     @Override
